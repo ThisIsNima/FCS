@@ -1,0 +1,327 @@
+function [shuffledArray, Cluster_size_array, Cluster_accuracy_array]=Sept_DecisionTree(Neighbor_index, input_struct_H,input_struct_A)
+
+
+
+Covered_voxels=0;
+
+fn{1}=strcat('a',num2str(1));
+X=input_struct_H.(fn{1});
+N=size(X,1);
+
+S=zeros(N,1);
+red=zeros(N,1);
+blue=zeros(N,1);
+S_Denom=zeros(N,1);
+S_Nom=zeros(N,1);
+
+k=1;
+for i=1:370
+k=k+1;
+fn{k}=strcat('a',num2str(i));
+Xz=input_struct_H.(fn{k});
+
+for j=1:N
+X_mean(j,:)=mean(Xz(j,:));
+end
+
+
+X_mean_Total_H(i,:)=X_mean;
+end
+
+
+
+%disp(size(X_mean_Total_H));
+
+
+
+
+k=1;
+for i=1:313
+k=k+1;
+fn{k}=strcat('a',num2str(i));
+X=input_struct_A.(fn{k});
+
+for j=1:N
+X_mean(j,:)= mean(X(j,:));
+end
+
+X_mean_Total_A(i,:)=X_mean;
+
+end
+
+
+
+
+
+
+
+
+% rand=randi(size(X_mean_Total_H,2));
+% if rand>0
+% start=rand;
+% end
+% kk=1;
+% Start_array(1)=start;
+
+start=1;
+Covered_voxels=start;
+Covered_voxels(size(Covered_voxels,2)+1)=1;
+
+X_mean_Total(1:370,:)=X_mean_Total_H;
+X_mean_Total(371:683,:)=X_mean_Total_A;
+
+
+
+
+Class=zeros(683,1);
+Class(1:370)=1;
+X_mean_Total(:,size(X_mean_Total,2)+1)=Class;
+%disp(size(X_mean_Total,2)+1)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+shuffledArray = X_mean_Total(randperm(size(X_mean_Total,1)),:);
+%display(size(shuffledArray));
+
+
+Train=shuffledArray(1:547,:);
+Test=shuffledArray(548:683,:);
+
+
+Vs=1;
+ Cluster(1)=start;
+
+ 
+ 
+X1=Train(:,start);
+X2=Test(:,start);
+Cluster_index=0;
+ 
+ 
+ Big_Accuracies=0;
+ Cluster_size=1;
+ Cluster_voxels(1)=start;
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+while  Vs~=54% is notvoxels covered the size of search space
+
+%disp(Vs);
+    
+ypred=0;
+ypred_neighbor=0;
+Corrects=0;
+Accuracy1=0;
+Accuracy2=0;
+Accuracy_neighbor=0;
+X1_neighbor=0;
+X2_neighbor=0;
+Accuracy_array=0;
+ypred_comb=0;
+Neigbors=0;
+%%%%%%%%%%%(1)The new Start Voxel Or Pevious Cluster%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if Big_Accuracies==0
+Mdl = fitctree(X1,Train(:,size(Train,2)));
+ypred = predict(Mdl,X2);
+Corrects=Test(:,size(Test,2));
+count=0;
+for i=1:size(ypred,1)
+if ypred(i)==Corrects(i)
+count=count+1;
+end
+end
+Accuracy1=count/size(ypred,1);
+end
+
+%%%%%%%%%%%%%%%%%%%%(2)Each Immediate Neighbor Only%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+k=0;
+
+for v=1:Cluster_size
+%disp('v');
+%disp(v);
+
+
+for i=1:27
+    if Neighbor_index(Cluster_voxels(v),i) ~=0
+ k=k+1;       
+X1_neighbor=Train(:,Neighbor_index(Cluster_voxels(v),i));
+X2_neighbor=Test(:,Neighbor_index(Cluster_voxels(v),i));
+Mdl_neighbor = fitctree(X1_neighbor,Train(:,size(Train,2)));
+ypred_neighbor = predict(Mdl_neighbor,X2_neighbor);
+Corrects=Test(:,size(Test,2));
+count=0;
+for j=1:size(ypred_neighbor,1)
+if ypred_neighbor(j)==Corrects(j)
+count=count+1;
+end
+end
+Accuracy_neighbor=count/size(ypred_neighbor,1);
+Accuracy2(k)=Accuracy_neighbor;
+end
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%(3)Combination%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ k=0;       
+    
+  for v=1:Cluster_size
+%disp('v');
+%disp(v);      
+for i=1:27
+    if Neighbor_index(Cluster_voxels(v),i) ~=0
+ k=k+1;
+%disp('size of X1 beggining');
+%disp(size(X1));
+
+X1(:,size(X1,2)+1)=Train(:,Neighbor_index(Cluster_voxels(v),i));
+X2(:,size(X2,2)+1)=Test(:,Neighbor_index(Cluster_voxels(v),i));
+
+Mdl = fitctree(X1,Train(:,size(Train,2)));
+ypred_comb = predict(Mdl,X2);
+Corrects=Test(:,size(Test,2));
+
+count=0;
+for m=1:size(ypred_comb,1)
+if ypred_comb(m)==Corrects(m)
+count=count+1;
+end
+end
+Accuracy=count/size(ypred_comb,1);
+Accuracy_array(k)=Accuracy;
+Neigbors(k)=Neighbor_index(Cluster_voxels(v),i);
+
+
+  %  disp('size of X1 after combined');
+   % disp(size(X1));
+    X1(:,size(X1,2))=[];
+    X2(:,size(X2,2))=[];
+
+
+    end    
+end
+
+end
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Selecting the Good Neighbors%%%%%%%%%%%%%%%%%
+if Big_Accuracies==0
+k=0;
+
+
+for i=1:size(Accuracy_array,2)
+    
+   % disp('Accuracy1');
+  %  disp(Accuracy1);
+  %  disp('Accuracy_array(i)');
+  %  disp(Accuracy_array(i));
+  %  disp('Accuracy2(i)');
+   % disp(Accuracy2(i));
+  %  disp(Neigbors(i));
+if Accuracy_array(i)> Accuracy1 &&  Accuracy_array(i)> Accuracy2(i)
+    k=k+1;
+    Big_Accuracies(1,k)= Accuracy_array(i);
+    Big_Accuracies(2,k)= Neigbors(i);
+end
+end
+
+
+
+else    
+    k=0;
+    Big_Accuracies=0;
+for i=1:size(Accuracy_array,2)
+    
+  %  disp('Cluster Accuracy');
+  %  disp(Cluster_Accuracy);
+ %   disp('Accuracy_array(i)');
+  %  disp(Accuracy_array(i));
+  %  disp('Accuracy2(i)');
+ %   disp(Accuracy2(i));
+  %  disp(Neigbors(i));
+if Accuracy_array(i)> Cluster_Accuracy &&  Accuracy_array(i)> Accuracy2(i)
+    k=k+1;
+    Big_Accuracies(1,k)= Accuracy_array(i);
+    Big_Accuracies(2,k)= Neigbors(i);
+end
+end
+
+
+
+end 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%If No good Neighbors%%%%%%%%%%%%%%%%
+
+if Big_Accuracies==0
+    
+   % put the cluster in to the container
+ Cluster(size(Cluster,2)+1)=Accuracy1;
+ Cluster_size_array(Vs)=Cluster_size;
+ if Cluster_size==1
+Cluster_accuracy_array(Vs)=Accuracy1;
+ else
+Cluster_accuracy_array(Vs)=Cluster_Accuracy;
+ end
+%fn{Vs}=strcat('a',num2str(Vs));
+%cluster_struct.(fn{Vs})=Cluster_Accuracy;
+
+
+
+ Cluster_voxels=0;
+Covered_voxels=0;
+Cluster=0;
+start=Vs+1;
+Vs=Vs+1;
+X1=0;
+X2=0;
+X1=Train(:,start);
+X2=Test(:,start);
+% disp('Cluster Size');
+% disp(Cluster_size);
+% disp('Cluster Ends Here');
+% disp('start');
+% disp(start);
+% disp('Vs');
+% disp(Vs);
+Cluster_size=1; 
+Cluster_voxels(1)=start;
+else %%%%%%%%%%%%%%%%%%%%%%%Picking the Best Neighbor%%%%%%%%%%%%%%%%%%%%%%%
+%New_Index=find(Big_Accuracies(1,:)==max(Big_Accuracies(1,:)));
+ Cluster_size= Cluster_size+1; 
+
+Covered_voxels(size(Covered_voxels,2)+1)=start;
+%Biggest_Accuracies=sort(Big_Accuracies(2,:),'descend');
+Biggest_Accuracies=sortrows(Big_Accuracies',1,'descend')';
+%disp(Biggest_Accuracies);
+for i=1:size(Biggest_Accuracies,2)
+New_Start_Index=Biggest_Accuracies(2,i);
+   if isempty( find(Covered_voxels==New_Start_Index))
+    start=New_Start_Index;
+    Covered_voxels(size(Covered_voxels,2)+1)=start;
+    break
+   end
+end
+Cluster_voxels(size(Cluster_voxels,2)+1)=start;
+%New_Start_Index=Big_Accuracies(2,New_Index(1));
+
+%Cluster_index(size(Cluster_index,2)+1)=New_Start_Index;
+Cluster(size(Cluster,2)+1)=max(Big_Accuracies(1,:));
+
+Cluster_Accuracy=max(Big_Accuracies(1,:));
+
+
+%disp('start');
+%disp(start);
+%disp('Vs');
+%disp(Vs);
+X1(:,size(X1,2)+1)=Train(:,start);
+X2(:,size(X2,2)+1)=Test(:,start);
+end
+
+
+end
+
+
+end
