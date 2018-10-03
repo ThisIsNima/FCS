@@ -1,0 +1,207 @@
+function [Information_array]=SearchLight(TSData,Region_Number, input_struct_H,input_struct_A,Radius )
+
+
+
+Covered_voxels=0;
+
+fn{1}=strcat('a',num2str(1));
+X=input_struct_H.(fn{1});
+N=size(X,1);
+
+S=zeros(N,1);
+red=zeros(N,1);
+blue=zeros(N,1);
+S_Denom=zeros(N,1);
+S_Nom=zeros(N,1);
+
+k=1;
+for i=1:370
+k=k+1;
+fn{k}=strcat('a',num2str(i));
+Xz=input_struct_H.(fn{k});
+
+for j=1:N
+X_mean(j,:)=mean(Xz(j,:));
+end
+
+
+X_mean_Total_H(i,:)=X_mean;
+end
+
+
+
+%disp(size(X_mean_Total_H));
+
+
+
+
+k=1;
+for i=1:313
+k=k+1;
+fn{k}=strcat('a',num2str(i));
+X=input_struct_A.(fn{k});
+
+for j=1:N
+X_mean(j,:)= mean(X(j,:));
+end
+
+X_mean_Total_A(i,:)=X_mean;
+
+end
+
+
+
+
+
+
+
+
+% rand=randi(size(X_mean_Total_H,2));
+% if rand>0
+% start=rand;
+% end
+% kk=1;
+% Start_array(1)=start;
+
+start=1;
+Covered_voxels=start;
+Covered_voxels(size(Covered_voxels,2)+1)=1;
+
+X_mean_Total(1:370,:)=X_mean_Total_H;
+X_mean_Total(371:683,:)=X_mean_Total_A;
+
+
+
+
+Class=zeros(683,1);
+Class(1:370)=1;
+X_mean_Total(:,size(X_mean_Total,2)+1)=Class;
+%disp(size(X_mean_Total,2)+1)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+shuffledArray = X_mean_Total(randperm(size(X_mean_Total,1)),:);
+%display(size(shuffledArray));
+
+
+Train=shuffledArray(1:547,:);
+Test=shuffledArray(548:683,:);
+
+
+Vs=1;
+
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+Region_Number=num2str(Region_Number);
+Region_Number=strcat('Region_',Region_Number);
+x=TSData.(Region_Number).vox_loc;
+
+
+
+
+DISTS=zeros(size(x,1),size(x,1));
+
+for i=1:size(x,1)
+for j=1:size(x,1)
+DISTS(i,j)=pdist2(x(i,:),x(j,:));
+end
+end
+
+
+
+
+while  Vs<size(x,1)+1% is notvoxels covered the size of search space
+
+%disp(Vs);
+    
+ypred=0;
+Corrects=0;
+Accuracy1=0;
+Accuracy2=0;
+Xnb=0;
+Ynb=0;
+Tnb=0;
+AUCnb=0;
+
+
+Neighbor_index=0;
+%%%%%%%%%%%(1)The new Start Voxel Or Pevious Cluster%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+k=0;
+
+%%Finding the voxels in the neighborhood.
+
+
+%Neighbor_index;
+for i=1:size(x,1)
+k=0;
+for j=1:size(x,1)
+if DISTS(i,j) <= sqrt(2*(Radius^2))
+k=k+1;
+Neighbor_index(i,k)=j;
+end
+end
+end
+
+%size_array(Vs)=size(Neighbor_index,1);
+
+%disp(size(Neighbor_index,2));
+%disp('Vs');
+%disp(Vs);
+%%%
+kk=0;
+
+%disp(Neighbor_index(1,:))
+
+X1=zeros(size(Train,1),size(Neighbor_index,2));
+X2=zeros(size(Test,1),size(Neighbor_index,2));
+
+for m=1:size(Neighbor_index,2)
+if Neighbor_index(Vs,m)~=0
+    kk=kk+1;
+X1(:,kk)= Train(:,Neighbor_index(Vs,m));
+X2(:,kk)= Test(:,Neighbor_index(Vs,m));
+end
+end
+
+
+%disp(size(X1))
+
+Mdl = fitctree(X1,Train(:,size(Train,2)));
+
+%[label,score,cost] = predict(Mdl,X2);
+ypred = predict(Mdl,X2);
+Corrects=Test(:,size(Test,2));
+% count=0;
+% for i=1:size(ypred,1)
+% if ypred(i)==Corrects(i)
+% count=count+1;
+% end
+% end
+% Accuracy=count/size(ypred,1);
+%scores = mdl.Fitted.Probability;
+%[Xnb,Ynb,Tnb,AUCnb] = perfcurve(Corrects,scores,'true');
+
+
+%[predicted_label, accuracy, decision_values]= predict(Mdl,X2);
+
+
+%[X,Y,Tnb,AUCnb ] = perfcurve(Corrects, decision_values(:,1)*Mdl.Label(1),Mdl.Label(1));
+
+[X,Y,T,AUC] = perfcurve(Corrects,ypred,1) ;
+
+Information_array(Vs)=AUC;
+
+Vs=Vs+1;
+end
+
+
+end
+
+
